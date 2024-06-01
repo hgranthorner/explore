@@ -78,7 +78,6 @@ Coordinate index_to_coord(int i, int row_len)
     return (Coordinate) {.x=x, .y=y};
 }
 
-
 Tile *tiles_generate(int num_grass_patches)
 {
     Tile *tiles = malloc(sizeof(Tile) * NUM_TILES);
@@ -133,6 +132,8 @@ int main(void)
 
     // int camera_extra_tiles = 0;
     while (!WindowShouldClose()) {
+        GameCamera *camera = &state.camera;
+
         // Handle input
         if (IsKeyDown(KEY_W)) state.player.pos.y -= 1;
         if (IsKeyDown(KEY_S)) state.player.pos.y += 1;
@@ -143,17 +144,16 @@ int main(void)
             state.tiles = tiles_generate(NUM_GRASS_PATCHES);
         }
         if (IsKeyPressed(KEY_Z)) {
-            state.camera.area.width  -= state.camera.area.width / 10;
-            state.camera.area.height -= state.camera.area.height / 10;
+            camera->area.width  -= camera->area.width / 10;
+            camera->area.height -= camera->area.height / 10;
         }
         if (IsKeyPressed(KEY_Y)) {
-            state.camera.area.width += state.camera.area.width / 10;
-            state.camera.area.height += state.camera.area.height / 10;
+            camera->area.width += camera->area.width / 10;
+            camera->area.height += camera->area.height / 10;
         }
 
         // END handle input
         // Update state
-        GameCamera *camera = &state.camera;
         uint32_t padding_x = camera_padding_wide(state.camera);
         uint32_t padding_y = camera_padding_high(state.camera);
         Coordinate pos = state.player.pos;
@@ -178,8 +178,8 @@ int main(void)
         BeginDrawing();
         ClearBackground(BLACK);
 
-        int ending_tile_y      = state.camera.area.y + state.camera.area.height + camera_extra_tiles_high(state.camera);
-        int ending_tile_x      = state.camera.area.x + state.camera.area.width  + camera_extra_tiles_wide(state.camera);
+        int ending_tile_y = camera->area.y + camera->area.height + camera_extra_tiles_high(state.camera);
+        int ending_tile_x = camera->area.x + camera->area.width  + camera_extra_tiles_wide(state.camera);
 
         int tile_width  = camera_tile_width(state.camera);
         int tile_height = camera_tile_height(state.camera);
@@ -188,8 +188,8 @@ int main(void)
         LOG("state.camera.area.width: %f\n", state.camera.area.width);
         LOG("camera_tile_width: %d\n", tile_width);
 
-        for (int y = state.camera.area.y; y < ending_tile_y; y++) {
-            for (int x = state.camera.area.x; x < ending_tile_x; x++) {
+        for (int y = camera->area.y; y < ending_tile_y; y++) {
+            for (int x = camera->area.x; x < ending_tile_x; x++) {
                 int i = coord_to_index(x, y, TILES_WIDE);
 
                 Tile tile = state.tiles[i];
@@ -206,8 +206,8 @@ int main(void)
                     c.a -= 20;
                 }
 
-                int pixel_x = (x - state.camera.area.x) * tile_width;
-                int pixel_y = (y - state.camera.area.y) * tile_height;
+                int pixel_x = (x - camera->area.x) * tile_width;
+                int pixel_y = (y - camera->area.y) * tile_height;
 
                 DrawRectangle(pixel_x,
                               pixel_y,
@@ -218,8 +218,8 @@ int main(void)
         }
 
         LOG("Player position: x:%d y:%d\n", pos.x, pos.y);
-        DrawRectangle((state.player.pos.x - state.camera.area.x) * tile_width,
-                      (state.player.pos.y - state.camera.area.y) * tile_height,
+        DrawRectangle((state.player.pos.x - camera->area.x) * tile_width,
+                      (state.player.pos.y - camera->area.y) * tile_height,
                       tile_width,
                       tile_height,
                       state.player.color);

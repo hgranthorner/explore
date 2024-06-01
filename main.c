@@ -6,6 +6,8 @@
 
 #include "raylib.h"
 
+#include "camera.c"
+
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
 #endif
@@ -55,12 +57,6 @@ typedef struct {
 } Player;
 
 typedef struct {
-    Rectangle area;
-    size_t screen_width;
-    size_t screen_height;
-} GameCamera;
-
-typedef struct {
     Player    player;
     // x = starting tile in x axis
     // y = starting tile in y axis
@@ -80,40 +76,6 @@ Coordinate index_to_coord(int i, int row_len)
     int y = i / row_len;
     int x = i % row_len;
     return (Coordinate) {.x=x, .y=y};
-}
-
-uint32_t camera_tile_width(GameCamera camera)
-{
-    return ((float)camera.screen_width / (float)camera.area.width);
-}
-
-uint32_t camera_tile_height(GameCamera camera)
-{
-    return ((float)camera.screen_height / (float)camera.area.height);
-}
-
-uint32_t camera_extra_tiles_wide(GameCamera camera)
-{
-    int current_pixels_wide = camera_tile_width(camera) * camera.area.width;
-    int total_width = camera.screen_width;
-    uint32_t extra_tiles = 1;
-    while (current_pixels_wide < total_width) {
-        extra_tiles++;
-        current_pixels_wide = current_pixels_wide + camera_tile_width(camera);
-    }
-    return extra_tiles;
-}
-
-uint32_t camera_extra_tiles_high(GameCamera camera)
-{
-    int current_pixels_high = camera_tile_height(camera) * camera.area.height;
-    int total_height = camera.screen_height;
-    uint32_t extra_tiles = 1;
-    while (current_pixels_high < total_height) {
-        extra_tiles++;
-        current_pixels_high = current_pixels_high + camera_tile_height(camera);
-    }
-    return extra_tiles;
 }
 
 
@@ -192,21 +154,23 @@ int main(void)
         // END handle input
         // Update state
         GameCamera *camera = &state.camera;
+        uint32_t padding_x = camera_padding_wide(state.camera);
+        uint32_t padding_y = camera_padding_high(state.camera);
         Coordinate pos = state.player.pos;
         int player_i = coord_to_index(pos.x, pos.y, TILES_WIDE);
         state.tiles[player_i].walked_on = true;
 
-        if (pos.x < camera->area.x + CAMERA_PADDING) {
-            camera->area.x -= CAMERA_PADDING * 2;
+        if (pos.x < camera->area.x + padding_x) {
+            camera->area.x -= padding_x * 2;
         }
-        if (camera->area.x + camera->area.width < pos.x + CAMERA_PADDING) {
-            camera->area.x += CAMERA_PADDING * 2;
+        if (camera->area.x + camera->area.width < pos.x + padding_x) {
+            camera->area.x += padding_x * 2;
         }
-        if (pos.y < camera->area.y + CAMERA_PADDING) {
-            camera->area.y -= CAMERA_PADDING * 2;
+        if (pos.y < camera->area.y + padding_y) {
+            camera->area.y -= padding_y * 2;
         }
-        if (camera->area.y + camera->area.height < pos.y + CAMERA_PADDING) {
-            camera->area.y += CAMERA_PADDING * 2;
+        if (camera->area.y + camera->area.height < pos.y + padding_y) {
+            camera->area.y += padding_y * 2;
         }
         // End update state
 

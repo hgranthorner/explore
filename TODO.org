@@ -12,3 +12,5 @@
 ** TODO Improve graphics
 *** [ ] Get sprites?
 *** [ ] Pixel graphics?
+* Bugs
+** TODO Grass generation

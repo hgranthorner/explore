@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +25,6 @@
 #define TILES_HIGH (SCREEN_HEIGHT / TILE_HEIGHT) * TILE_MOD
 #define NUM_TILES TILES_WIDE * TILES_HIGH
 
-#define CAMERA_EXTRA_TILES 5
 #define CAMERA_PADDING 5
 
 // Arbitrary
@@ -82,20 +82,40 @@ Coordinate index_to_coord(int i, int row_len)
     return (Coordinate) {.x=x, .y=y};
 }
 
-size_t camera_tile_width(GameCamera camera)
+uint32_t camera_tile_width(GameCamera camera)
 {
     return ((float)camera.screen_width / (float)camera.area.width);
 }
 
-size_t camera_tile_height(GameCamera camera)
+uint32_t camera_tile_height(GameCamera camera)
 {
     return ((float)camera.screen_height / (float)camera.area.height);
 }
 
-size_t camera_extra_tiles(Rectangle camera, int screen_width, int screen_height)
+uint32_t camera_extra_tiles_wide(GameCamera camera)
 {
-    return 0;
+    int current_pixels_wide = camera_tile_width(camera) * camera.area.width;
+    int total_width = camera.screen_width;
+    uint32_t extra_tiles = 1;
+    while (current_pixels_wide < total_width) {
+        extra_tiles++;
+        current_pixels_wide = current_pixels_wide + camera_tile_width(camera);
+    }
+    return extra_tiles;
 }
+
+uint32_t camera_extra_tiles_high(GameCamera camera)
+{
+    int current_pixels_high = camera_tile_height(camera) * camera.area.height;
+    int total_height = camera.screen_height;
+    uint32_t extra_tiles = 1;
+    while (current_pixels_high < total_height) {
+        extra_tiles++;
+        current_pixels_high = current_pixels_high + camera_tile_height(camera);
+    }
+    return extra_tiles;
+}
+
 
 Tile *tiles_generate(int num_grass_patches)
 {
@@ -188,16 +208,14 @@ int main(void)
         if (camera->area.y + camera->area.height < pos.y + CAMERA_PADDING) {
             camera->area.y += CAMERA_PADDING * 2;
         }
-
-
         // End update state
 
         // Draw
         BeginDrawing();
         ClearBackground(BLACK);
 
-        int ending_tile_y      = state.camera.area.y + state.camera.area.height + CAMERA_EXTRA_TILES;
-        int ending_tile_x      = state.camera.area.x + state.camera.area.width  + CAMERA_EXTRA_TILES;
+        int ending_tile_y      = state.camera.area.y + state.camera.area.height + camera_extra_tiles_high(state.camera);
+        int ending_tile_x      = state.camera.area.x + state.camera.area.width  + camera_extra_tiles_wide(state.camera);
 
         int tile_width  = camera_tile_width(state.camera);
         int tile_height = camera_tile_height(state.camera);

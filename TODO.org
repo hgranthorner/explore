@@ -13,4 +13,4 @@
 *** [ ] Get sprites?
 *** [ ] Pixel graphics?
 * Bugs
-** TODO Grass generation
+** DONE Grass generation

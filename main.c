@@ -30,10 +30,10 @@
 #define CAMERA_PADDING 5
 
 // Arbitrary
-#define MAX_GRASS_SIZE    25
-#define NUM_GRASS_PATCHES NUM_TILES / 5
+#define MAX_GRASS_SIZE    15
+#define NUM_GRASS_PATCHES NUM_TILES / 200
 
-#define LOGGING 1
+#define LOGGING 0
 #define LOG(...) if (LOGGING) printf(__VA_ARGS__)
 
 typedef struct {
@@ -80,12 +80,20 @@ Coordinate index_to_coord(int i, int row_len)
 
 Tile *tiles_generate(int num_grass_patches)
 {
+    uint64_t num_tiles = NUM_TILES;
+    uint64_t max_grass_size = MAX_GRASS_SIZE;
+    int num_tiles2 = NUM_TILES;
+    (void) num_tiles;
+    (void) num_tiles2;
     Tile *tiles = malloc(sizeof(Tile) * NUM_TILES);
     memset(tiles, 0, sizeof(Tile) * NUM_TILES);
     for (int grass_patch = 0; grass_patch < num_grass_patches; grass_patch++) {
-        int patch_center = rand() % NUM_TILES;
-        int patch_size = (rand() % MAX_GRASS_SIZE) + 1;
+        uint64_t patch_center_rand = rand();
+        uint64_t patch_center = patch_center_rand % num_tiles;
+        uint64_t patch_size_rand = rand();
+        uint64_t patch_size = (patch_size_rand % max_grass_size) + 1;
         Coordinate coord = index_to_coord(patch_center, TILES_WIDE);
+        LOG("Creating patch at x:%d y:%d\n", coord.x, coord.y);
         for (int x = coord.x - patch_size; x < coord.x + patch_size; x++) {
             if (x < 0) continue;
             if (TILES_WIDE <= x) continue;
@@ -126,6 +134,7 @@ int main(void)
         .screen_width = SCREEN_WIDTH,
         .screen_height = SCREEN_HEIGHT
     };
+    LOG("NUM_TILES: %d\n", NUM_TILES);
     state.tiles = tiles_generate(NUM_GRASS_PATCHES);
 
     SetTargetFPS(60);

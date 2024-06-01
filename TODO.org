@@ -1,0 +1,10 @@
+* Ideas
+** TODO Make camera dynamically move around while player moves
+*** [ ] Increase size of world
+*** [ ] Improve camera
+** TODO Increase world generation [0/0]
+*** [ ] Add different regions
+*** [ ] Add impassable or dangerous water
+** TODO Add more ways to get around?
+*** Horses that you can tame?
+*** Boats to go over water?

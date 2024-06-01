@@ -5,19 +5,34 @@
 
 #include "raylib.h"
 
+#ifndef max
+#define max(a,b)            (((a) > (b)) ? (a) : (b))
+#endif
+
+#ifndef min
+#define min(a,b)            (((a) < (b)) ? (a) : (b))
+#endif
+
 #define TILE_WIDTH  10
 #define TILE_HEIGHT 10
 #define PADDING     5
 
 #define SCREEN_WIDTH  800
 #define SCREEN_HEIGHT 600
-#define TILES_WIDE SCREEN_WIDTH / TILE_WIDTH
-#define TILES_HIGH SCREEN_HEIGHT / TILE_HEIGHT
+#define TILE_MOD 50
+#define TILES_WIDE (SCREEN_WIDTH / TILE_WIDTH) * TILE_MOD
+#define TILES_HIGH (SCREEN_HEIGHT / TILE_HEIGHT) * TILE_MOD
 #define NUM_TILES TILES_WIDE * TILES_HIGH
+
+#define CAMERA_EXTRA_TILES 5
+#define CAMERA_PADDING 5
 
 // Arbitrary
 #define MAX_GRASS_SIZE    25
-#define NUM_GRASS_PATCHES 10
+#define NUM_GRASS_PATCHES NUM_TILES / 5
+
+#define LOGGING 1
+#define LOG(...) if (LOGGING) printf(__VA_ARGS__)
 
 typedef struct {
     int x;
@@ -40,12 +55,19 @@ typedef struct {
 } Player;
 
 typedef struct {
+    Rectangle area;
+    size_t screen_width;
+    size_t screen_height;
+} GameCamera;
+
+typedef struct {
     Player    player;
     // x = starting tile in x axis
     // y = starting tile in y axis
     // width = width in tiles
     // height = height in tiles
-    Rectangle camera;
+    GameCamera camera;
+    Tile *tiles;
 } State;
 
 size_t coord_to_index(int x, int y, int row_len)
@@ -58,6 +80,21 @@ Coordinate index_to_coord(int i, int row_len)
     int y = i / row_len;
     int x = i % row_len;
     return (Coordinate) {.x=x, .y=y};
+}
+
+size_t camera_tile_width(GameCamera camera)
+{
+    return ((float)camera.screen_width / (float)camera.area.width);
+}
+
+size_t camera_tile_height(GameCamera camera)
+{
+    return ((float)camera.screen_height / (float)camera.area.height);
+}
+
+size_t camera_extra_tiles(Rectangle camera, int screen_width, int screen_height)
+{
+    return 0;
 }
 
 Tile *tiles_generate(int num_grass_patches)
@@ -81,6 +118,7 @@ Tile *tiles_generate(int num_grass_patches)
             }
         }
     }
+    LOG("Generated %d tiles!\n", NUM_TILES);
     return tiles;
 }
 
@@ -89,65 +127,90 @@ int main(void)
     srand(time(NULL));
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Explore");
 
-    Tile *tiles = tiles_generate(NUM_GRASS_PATCHES);
-
     State state = {0};
     state.player = (Player){
         .pos = (Coordinate) {
-            .x = 5,
-            .y = 5,
+            .x = 110,
+            .y = 110,
         },
         .color = GREEN,
     };
-    state.camera = (Rectangle){
-        .x      = 0,
-        .y      = 0,
-        .width  = TILES_WIDE,
-        .height = TILES_HIGH,
+    state.camera = (GameCamera) {
+        .area =(Rectangle){
+            .x      = 100,
+            .y      = 100,
+            .width  = SCREEN_WIDTH / 10,
+            .height = SCREEN_HEIGHT / 10,
+        },
+        .screen_width = SCREEN_WIDTH,
+        .screen_height = SCREEN_HEIGHT
     };
+    state.tiles = tiles_generate(NUM_GRASS_PATCHES);
 
     SetTargetFPS(60);
+
+    // int camera_extra_tiles = 0;
     while (!WindowShouldClose()) {
-        if (IsKeyPressed(KEY_W)) state.player.pos.y -= 1;
-        if (IsKeyPressed(KEY_S)) state.player.pos.y += 1;
-        if (IsKeyPressed(KEY_A)) state.player.pos.x -= 1;
-        if (IsKeyPressed(KEY_D)) state.player.pos.x += 1;
+        // Handle input
+        if (IsKeyDown(KEY_W)) state.player.pos.y -= 1;
+        if (IsKeyDown(KEY_S)) state.player.pos.y += 1;
+        if (IsKeyDown(KEY_A)) state.player.pos.x -= 1;
+        if (IsKeyDown(KEY_D)) state.player.pos.x += 1;
         if (IsKeyPressed(KEY_R)) {
-            free(tiles);
-            tiles = tiles_generate(NUM_GRASS_PATCHES);
+            free(state.tiles);
+            state.tiles = tiles_generate(NUM_GRASS_PATCHES);
         }
         if (IsKeyPressed(KEY_Z)) {
-            state.camera.width -= 1;
-            state.camera.height -= 1;
+            state.camera.area.width  -= state.camera.area.width / 10;
+            state.camera.area.height -= state.camera.area.height / 10;
         }
         if (IsKeyPressed(KEY_Y)) {
-            state.camera.width += 1;
-            state.camera.height += 1;
+            state.camera.area.width += state.camera.area.width / 10;
+            state.camera.area.height += state.camera.area.height / 10;
         }
 
-        int i = coord_to_index(state.player.pos.x, state.player.pos.y, TILES_WIDE);
-        tiles[i].walked_on = true;
+        // END handle input
+        // Update state
+        GameCamera *camera = &state.camera;
+        Coordinate pos = state.player.pos;
+        int player_i = coord_to_index(pos.x, pos.y, TILES_WIDE);
+        state.tiles[player_i].walked_on = true;
 
+        if (pos.x < camera->area.x + CAMERA_PADDING) {
+            camera->area.x -= CAMERA_PADDING * 2;
+        }
+        if (camera->area.x + camera->area.width < pos.x + CAMERA_PADDING) {
+            camera->area.x += CAMERA_PADDING * 2;
+        }
+        if (pos.y < camera->area.y + CAMERA_PADDING) {
+            camera->area.y -= CAMERA_PADDING * 2;
+        }
+        if (camera->area.y + camera->area.height < pos.y + CAMERA_PADDING) {
+            camera->area.y += CAMERA_PADDING * 2;
+        }
+
+
+        // End update state
+
+        // Draw
         BeginDrawing();
         ClearBackground(BLACK);
 
-        int starting_tile_y         = state.camera.y;
-        int starting_tile_x         = state.camera.x;
-        int ending_tile_y           = state.camera.y + state.camera.height;
-        int ending_tile_x           = state.camera.x + state.camera.width;
-        int camera_tile_width     = (float)SCREEN_WIDTH / (float)state.camera.width;
-        int camera_tile_height    = (float)SCREEN_HEIGHT / (float)state.camera.height;
+        int ending_tile_y      = state.camera.area.y + state.camera.area.height + CAMERA_EXTRA_TILES;
+        int ending_tile_x      = state.camera.area.x + state.camera.area.width  + CAMERA_EXTRA_TILES;
 
-        printf("state.camera.width: %f\n", state.camera.width);
-        printf("camera_tile_width: %d\n", camera_tile_width);
+        int tile_width  = camera_tile_width(state.camera);
+        int tile_height = camera_tile_height(state.camera);
 
-        for (int y = starting_tile_y; y < ending_tile_y; y++) {
-            for (int x = starting_tile_x; x < ending_tile_x; x++) {
-                int abs_y = y + starting_tile_y;
-                int abs_x = x + starting_tile_x;
-                int i = coord_to_index(abs_x, abs_y, TILES_WIDE);
+        LOG("state.camera.area.x: %f\n", state.camera.area.x);
+        LOG("state.camera.area.width: %f\n", state.camera.area.width);
+        LOG("camera_tile_width: %d\n", tile_width);
 
-                Tile tile = tiles[i];
+        for (int y = state.camera.area.y; y < ending_tile_y; y++) {
+            for (int x = state.camera.area.x; x < ending_tile_x; x++) {
+                int i = coord_to_index(x, y, TILES_WIDE);
+
+                Tile tile = state.tiles[i];
                 Color c;
                 switch(tile.type) {
                 case DIRT: {
@@ -161,26 +224,29 @@ int main(void)
                     c.a -= 20;
                 }
 
-                int pixel_x = x * camera_tile_width;
-                int pixel_y = y * camera_tile_height;
+                int pixel_x = (x - state.camera.area.x) * tile_width;
+                int pixel_y = (y - state.camera.area.y) * tile_height;
 
                 DrawRectangle(pixel_x,
                               pixel_y,
-                              camera_tile_width,
-                              camera_tile_height,
+                              tile_width,
+                              tile_height,
                               c);
             }
         }
 
-        DrawRectangle(state.player.pos.x * camera_tile_width,
-                      state.player.pos.y * camera_tile_height,
-                      camera_tile_width,
-                      camera_tile_height,
+        LOG("Player position: x:%d y:%d\n", pos.x, pos.y);
+        DrawRectangle((state.player.pos.x - state.camera.area.x) * tile_width,
+                      (state.player.pos.y - state.camera.area.y) * tile_height,
+                      tile_width,
+                      tile_height,
                       state.player.color);
+
 
         DrawFPS(10, 10);
 
         EndDrawing();
+        // End draw
     }
 
     return 0;

@@ -1,6 +1,7 @@
 * Ideas
 ** TODO Make camera dynamically move around while player moves
-*** [ ] Increase size of world
+*** [X] Increase size of world
+*** [X] Allow drawing half finished tiles off the right and bottom edges of the screen
 *** [ ] Improve camera
 ** TODO Increase world generation [0/0]
 *** [ ] Add different regions
@@ -8,3 +9,6 @@
 ** TODO Add more ways to get around?
 *** Horses that you can tame?
 *** Boats to go over water?
+** TODO Improve graphics
+*** [ ] Get sprites?
+*** [ ] Pixel graphics?

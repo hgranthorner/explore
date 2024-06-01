@@ -2,8 +2,12 @@ CC=clang
 
 CFLAGS=-Wall -Werror -Wpedantic -std=c17
 
+.PHONY: run
+run: bin/explore
+	./bin/explore
+
 bin/explore: main.c
-	$(CC) $(CFLAGS) -o $@ -lraylib -Lraylib-5.0/build/raylib -g -Iraylib-5.0/build/raylib/include -framework Cocoa -framework IOKit main.c
+	$(CC) $(CFLAGS) -o $@ -Ofast -lraylib -Lraylib-5.0/build/raylib -g -Iraylib-5.0/build/raylib/include -framework Cocoa -framework IOKit main.c
 
 .PHONY: raylib
 raylib:

@@ -7,6 +7,7 @@
 #include "raylib.h"
 
 #include "camera.c"
+#include "stb.c"
 
 #ifndef max
 #define max(a,b)            (((a) > (b)) ? (a) : (b))
@@ -31,7 +32,8 @@
 #define MAX_GRASS_SIZE    15
 #define NUM_GRASS_PATCHES NUM_TILES / 200
 #define TREE_CHANCE       3
-#define TREE_SIZE         3
+#define TREE_SIZE         4
+#define TREE_TRUNK_SIZE   TREE_SIZE / 2
 
 #define LOGGING 0
 #define LOG(...) if (LOGGING) printf(__VA_ARGS__)
@@ -44,7 +46,8 @@ typedef struct {
 typedef enum {
     DIRT,
     GRASS,
-    TREE
+    TREE,
+    TREE_TRUNK
 } TileType;
 
 typedef struct {
@@ -79,50 +82,72 @@ Coordinate index_to_coord(int i, int row_len)
     return (Coordinate) {.x=x, .y=y};
 }
 
+void set_tiles(Tile *tiles, Coordinate coord, int size, int value)
+{
+    for (int x = coord.x - size; x < coord.x + size; x++) {
+        if (x < 0) continue;
+        if (TILES_WIDE <= x) continue;
+
+        for (int y = coord.y - size; y < coord.y + size; y++) {
+            if (y < 0) continue;
+            if (TILES_HIGH <= y) continue;
+
+            int i = coord_to_index(x, y, TILES_WIDE);
+            tiles[i].type = value;
+        }
+    }
+}
+
 Tile *tiles_generate(int num_grass_patches)
 {
     uint64_t num_tiles = NUM_TILES;
     uint64_t max_grass_size = MAX_GRASS_SIZE;
-    int num_tiles2 = NUM_TILES;
-    (void) num_tiles;
-    (void) num_tiles2;
     Tile *tiles = malloc(sizeof(Tile) * NUM_TILES);
     memset(tiles, 0, sizeof(Tile) * NUM_TILES);
+
+    uint64_t *trees = NULL;
     for (int grass_patch = 0; grass_patch < num_grass_patches; grass_patch++) {
-        uint64_t patch_center_rand = rand();
-        uint64_t patch_center = patch_center_rand % num_tiles;
-        uint64_t patch_size_rand = rand();
-        uint64_t patch_size = (patch_size_rand % max_grass_size) + 1;
+        uint64_t patch_center = rand() % num_tiles;
+        uint64_t patch_size = (rand() % max_grass_size) + 1;
+
         Coordinate coord = index_to_coord(patch_center, TILES_WIDE);
         LOG("Creating patch at x:%d y:%d\n", coord.x, coord.y);
-        for (int x = coord.x - patch_size; x < coord.x + patch_size; x++) {
-            if (x < 0) continue;
-            if (TILES_WIDE <= x) continue;
 
-            for (int y = coord.y - patch_size; y < coord.y + patch_size; y++) {
-                if (y < 0) continue;
-                if (TILES_HIGH <= y) continue;
-
-                int i = coord_to_index(x, y, TILES_WIDE);
-                tiles[i].type = GRASS;
-            }
-        }
+        set_tiles(tiles, coord, patch_size, GRASS);
 
         bool has_tree = (rand() % TREE_CHANCE) == 0;
         if (has_tree) {
-            for (int x = coord.x - patch_size; x < coord.x + patch_size; x++) {
-                if (x < 0) continue;
-                if (TILES_WIDE <= x) continue;
-                for (int y = coord.y - patch_size; y < coord.y + patch_size; y++) {
-                    if (y < 0) continue;
-                    if (TILES_HIGH <= y) continue;
-                    int i = coord_to_index(x, y, TILES_WIDE);
-                    tiles[i].type = TREE;
+            arrput(trees, patch_center);
+        }
+    }
+
+    for (size_t i = 0; i < arrlenu(trees); i++) {
+        uint64_t patch_center = trees[i];
+        Coordinate coord = index_to_coord(patch_center, TILES_WIDE);
+        bool should_skip = false;
+
+        for (int x = coord.x - (TREE_SIZE + 1); x < coord.x + (TREE_SIZE + 1); x++) {
+            if (x < 0) continue;
+            if (TILES_WIDE <= x) continue;
+            for (int y = coord.y - (TREE_SIZE + 1); y < coord.y + (TREE_SIZE + 1); y++)  {
+                if (y < 0) continue;
+                if (TILES_HIGH <= y) continue;
+                int j = coord_to_index(x, y, TILES_WIDE);
+                TileType type = tiles[j].type;
+                if (type == TREE || type == TREE_TRUNK) {
+                    should_skip = true;
                 }
             }
         }
+
+        if (should_skip) continue;
+        set_tiles(tiles, coord, TREE_SIZE, TREE);
+        set_tiles(tiles, coord, TREE_TRUNK_SIZE, TREE_TRUNK);
     }
+
     LOG("Generated %d tiles!\n", NUM_TILES);
+    arrfree(trees);
+
     return tiles;
 }
 
@@ -153,7 +178,7 @@ int main(void)
     state.tiles = tiles_generate(NUM_GRASS_PATCHES);
     {
         int player_i;
-        while (state.tiles[(player_i = coord_to_index(state.player.pos.x, state.player.pos.y, TILES_WIDE))].type == TREE) {
+        while (state.tiles[(player_i = coord_to_index(state.player.pos.x, state.player.pos.y, TILES_WIDE))].type == TREE_TRUNK) {
             state.player.pos.y -= 1;
         }
     }
@@ -186,7 +211,7 @@ int main(void)
         // END handle input
         // Update state
         int target_i = coord_to_index(target_pos.x, target_pos.y, TILES_WIDE);
-        if (state.tiles[target_i].type != TREE) {
+        if (state.tiles[target_i].type != TREE_TRUNK) {
             state.player.pos = target_pos;
         }
 
@@ -240,6 +265,9 @@ int main(void)
                 case TREE: {
                     c = DARKGREEN;
                     c.a -= 40;
+                } break;
+                case TREE_TRUNK: {
+                    c = DARKBROWN;
                 } break;
                 }
 

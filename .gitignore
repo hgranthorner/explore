@@ -1,3 +1,4 @@
 *.o
 bin
 raylib*
+stb_ds.h

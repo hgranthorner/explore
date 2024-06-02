@@ -27,11 +27,11 @@
 #define TILES_HIGH (SCREEN_HEIGHT / TILE_HEIGHT) * TILE_MOD
 #define NUM_TILES TILES_WIDE * TILES_HIGH
 
-#define CAMERA_PADDING 5
-
 // Arbitrary
 #define MAX_GRASS_SIZE    15
 #define NUM_GRASS_PATCHES NUM_TILES / 200
+#define TREE_CHANCE       3
+#define TREE_SIZE         3
 
 #define LOGGING 0
 #define LOG(...) if (LOGGING) printf(__VA_ARGS__)
@@ -43,7 +43,8 @@ typedef struct {
 
 typedef enum {
     DIRT,
-    GRASS
+    GRASS,
+    TREE
 } TileType;
 
 typedef struct {
@@ -106,6 +107,20 @@ Tile *tiles_generate(int num_grass_patches)
                 tiles[i].type = GRASS;
             }
         }
+
+        bool has_tree = (rand() % TREE_CHANCE) == 0;
+        if (has_tree) {
+            for (int x = coord.x - patch_size; x < coord.x + patch_size; x++) {
+                if (x < 0) continue;
+                if (TILES_WIDE <= x) continue;
+                for (int y = coord.y - patch_size; y < coord.y + patch_size; y++) {
+                    if (y < 0) continue;
+                    if (TILES_HIGH <= y) continue;
+                    int i = coord_to_index(x, y, TILES_WIDE);
+                    tiles[i].type = TREE;
+                }
+            }
+        }
     }
     LOG("Generated %d tiles!\n", NUM_TILES);
     return tiles;
@@ -136,6 +151,12 @@ int main(void)
     };
     LOG("NUM_TILES: %d\n", NUM_TILES);
     state.tiles = tiles_generate(NUM_GRASS_PATCHES);
+    {
+        int player_i;
+        while (state.tiles[(player_i = coord_to_index(state.player.pos.x, state.player.pos.y, TILES_WIDE))].type == TREE) {
+            state.player.pos.y -= 1;
+        }
+    }
 
     SetTargetFPS(60);
 
@@ -144,10 +165,11 @@ int main(void)
         GameCamera *camera = &state.camera;
 
         // Handle input
-        if (IsKeyDown(KEY_W)) state.player.pos.y -= 1;
-        if (IsKeyDown(KEY_S)) state.player.pos.y += 1;
-        if (IsKeyDown(KEY_A)) state.player.pos.x -= 1;
-        if (IsKeyDown(KEY_D)) state.player.pos.x += 1;
+        Coordinate target_pos = state.player.pos;
+        if (IsKeyDown(KEY_W)) target_pos.y -= 1;
+        if (IsKeyDown(KEY_S)) target_pos.y += 1;
+        if (IsKeyDown(KEY_A)) target_pos.x -= 1;
+        if (IsKeyDown(KEY_D)) target_pos.x += 1;
         if (IsKeyPressed(KEY_R)) {
             free(state.tiles);
             state.tiles = tiles_generate(NUM_GRASS_PATCHES);
@@ -163,6 +185,11 @@ int main(void)
 
         // END handle input
         // Update state
+        int target_i = coord_to_index(target_pos.x, target_pos.y, TILES_WIDE);
+        if (state.tiles[target_i].type != TREE) {
+            state.player.pos = target_pos;
+        }
+
         uint32_t padding_x = camera_padding_wide(state.camera);
         uint32_t padding_y = camera_padding_high(state.camera);
         Coordinate pos = state.player.pos;
@@ -210,7 +237,12 @@ int main(void)
                 case GRASS: {
                     c = DARKGREEN;
                 } break;
+                case TREE: {
+                    c = DARKGREEN;
+                    c.a -= 40;
+                } break;
                 }
+
                 if (tile.walked_on) {
                     c.a -= 20;
                 }

@@ -3,7 +3,7 @@
 *** [X] Increase size of world
 *** [X] Allow drawing half finished tiles off the right and bottom edges of the screen
 *** [ ] Improve camera
-** TODO Increase world generation [0/0]
+** TODO Increase world generation
 *** [ ] Add different regions
 *** [ ] Add impassable or dangerous water
 ** TODO Add more ways to get around?

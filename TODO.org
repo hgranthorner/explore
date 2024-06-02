@@ -16,3 +16,7 @@
 *** [ ] Pixel graphics?
 * Bugs
 ** DONE Grass generation
+** DONE Drawn tiles all move up one when going one cluster to the left. Go down one when going to the right
+** DONE Seg fault when going up one cluster then coming back down
+** DONE Seg fault when going down a cluster
+** TODO Camera gets fucky when going to other cluster

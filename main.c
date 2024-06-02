@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -56,6 +56,12 @@ typedef struct {
 } Tile;
 
 typedef struct {
+    Tile *arr;
+    uint64_t wide;
+    uint64_t high;
+} Tiles;
+
+typedef struct {
     Coordinate pos;
     Color      color;
 } Player;
@@ -67,7 +73,7 @@ typedef struct {
     // width = width in tiles
     // height = height in tiles
     GameCamera camera;
-    Tile *tiles;
+    Tiles tiles;
 } State;
 
 size_t coord_to_index(int x, int y, int row_len)
@@ -82,35 +88,38 @@ Coordinate index_to_coord(int i, int row_len)
     return (Coordinate) {.x=x, .y=y};
 }
 
-void set_tiles(Tile *tiles, Coordinate coord, int size, int value)
+void set_tiles(Tiles tiles, Coordinate coord, int size, int value)
 {
     for (int x = coord.x - size; x < coord.x + size; x++) {
         if (x < 0) continue;
-        if (TILES_WIDE <= x) continue;
+        if (tiles.wide <= x) continue;
 
         for (int y = coord.y - size; y < coord.y + size; y++) {
             if (y < 0) continue;
-            if (TILES_HIGH <= y) continue;
+            if (tiles.high <= y) continue;
 
-            int i = coord_to_index(x, y, TILES_WIDE);
-            tiles[i].type = value;
+            int i = coord_to_index(x, y, tiles.wide);
+            tiles.arr[i].type = value;
         }
     }
 }
 
-Tile *tiles_generate(int num_grass_patches)
+Tiles tiles_generate(int num_grass_patches, uint64_t tiles_wide, uint64_t tiles_high)
 {
-    uint64_t num_tiles = NUM_TILES;
+    uint64_t num_tiles = tiles_wide * tiles_high;
     uint64_t max_grass_size = MAX_GRASS_SIZE;
-    Tile *tiles = malloc(sizeof(Tile) * NUM_TILES);
-    memset(tiles, 0, sizeof(Tile) * NUM_TILES);
+    Tiles tiles = {0};
+    tiles.wide = tiles_wide;
+    tiles.high = tiles_high;
+    tiles.arr = malloc(sizeof(Tile) * num_tiles);
+    memset(tiles.arr, 0, sizeof(Tile) * num_tiles);
 
     uint64_t *trees = NULL;
     for (int grass_patch = 0; grass_patch < num_grass_patches; grass_patch++) {
         uint64_t patch_center = rand() % num_tiles;
         uint64_t patch_size = (rand() % max_grass_size) + 1;
 
-        Coordinate coord = index_to_coord(patch_center, TILES_WIDE);
+        Coordinate coord = index_to_coord(patch_center, tiles.wide);
         LOG("Creating patch at x:%d y:%d\n", coord.x, coord.y);
 
         set_tiles(tiles, coord, patch_size, GRASS);
@@ -128,12 +137,12 @@ Tile *tiles_generate(int num_grass_patches)
 
         for (int x = coord.x - (TREE_SIZE + 1); x < coord.x + (TREE_SIZE + 1); x++) {
             if (x < 0) continue;
-            if (TILES_WIDE <= x) continue;
+            if (tiles.wide <= x) continue;
             for (int y = coord.y - (TREE_SIZE + 1); y < coord.y + (TREE_SIZE + 1); y++)  {
                 if (y < 0) continue;
-                if (TILES_HIGH <= y) continue;
-                int j = coord_to_index(x, y, TILES_WIDE);
-                TileType type = tiles[j].type;
+                if (tiles.high <= y) continue;
+                int j = coord_to_index(x, y, tiles.wide);
+                TileType type = tiles.arr[j].type;
                 if (type == TREE || type == TREE_TRUNK) {
                     should_skip = true;
                 }
@@ -145,7 +154,7 @@ Tile *tiles_generate(int num_grass_patches)
         set_tiles(tiles, coord, TREE_TRUNK_SIZE, TREE_TRUNK);
     }
 
-    LOG("Generated %d tiles!\n", NUM_TILES);
+    LOG("Generated %" PRIu64 " tiles!\n", num_tiles);
     arrfree(trees);
 
     return tiles;
@@ -174,14 +183,16 @@ int main(void)
         .screen_width = SCREEN_WIDTH,
         .screen_height = SCREEN_HEIGHT
     };
+
     LOG("NUM_TILES: %d\n", NUM_TILES);
-    state.tiles = tiles_generate(NUM_GRASS_PATCHES);
-    {
-        int player_i;
-        while (state.tiles[(player_i = coord_to_index(state.player.pos.x, state.player.pos.y, TILES_WIDE))].type == TREE_TRUNK) {
-            state.player.pos.y -= 1;
-        }
+    state.tiles = tiles_generate(NUM_GRASS_PATCHES, TILES_WIDE, TILES_HIGH);
+
+
+    while (state.tiles.arr[coord_to_index(state.player.pos.x, state.player.pos.y, state.tiles.wide)].type == TREE_TRUNK) {
+        state.player.pos.y -= 1;
     }
+
+
 
     SetTargetFPS(60);
 
@@ -196,8 +207,8 @@ int main(void)
         if (IsKeyDown(KEY_A)) target_pos.x -= 1;
         if (IsKeyDown(KEY_D)) target_pos.x += 1;
         if (IsKeyPressed(KEY_R)) {
-            free(state.tiles);
-            state.tiles = tiles_generate(NUM_GRASS_PATCHES);
+            free(state.tiles.arr);
+            state.tiles = tiles_generate(NUM_GRASS_PATCHES, state.tiles.wide, state.tiles.wide);
         }
         if (IsKeyPressed(KEY_Z)) {
             camera->area.width  -= camera->area.width / 10;
@@ -210,16 +221,16 @@ int main(void)
 
         // END handle input
         // Update state
-        int target_i = coord_to_index(target_pos.x, target_pos.y, TILES_WIDE);
-        if (state.tiles[target_i].type != TREE_TRUNK) {
+        int target_i = coord_to_index(target_pos.x, target_pos.y, state.tiles.wide);
+        if (state.tiles.arr[target_i].type != TREE_TRUNK) {
             state.player.pos = target_pos;
         }
 
         uint32_t padding_x = camera_padding_wide(state.camera);
         uint32_t padding_y = camera_padding_high(state.camera);
         Coordinate pos = state.player.pos;
-        int player_i = coord_to_index(pos.x, pos.y, TILES_WIDE);
-        state.tiles[player_i].walked_on = true;
+        int player_i = coord_to_index(pos.x, pos.y, state.tiles.wide);
+        state.tiles.arr[player_i].walked_on = true;
 
         if (pos.x < camera->area.x + padding_x) {
             camera->area.x -= padding_x * 2;
@@ -251,9 +262,9 @@ int main(void)
 
         for (int y = camera->area.y; y < ending_tile_y; y++) {
             for (int x = camera->area.x; x < ending_tile_x; x++) {
-                int i = coord_to_index(x, y, TILES_WIDE);
+                int i = coord_to_index(x, y, state.tiles.wide);
 
-                Tile tile = state.tiles[i];
+                Tile tile = state.tiles.arr[i];
                 Color c;
                 switch(tile.type) {
                 case DIRT: {

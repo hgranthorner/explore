@@ -1,9 +1,11 @@
 * Ideas
-** TODO Make camera dynamically move around while player moves
+** DONE Make camera dynamically move around while player moves
 *** [X] Increase size of world
 *** [X] Allow drawing half finished tiles off the right and bottom edges of the screen
-*** [ ] Improve camera
+*** [X] Improve camera
 ** TODO Increase world generation
+*** [ ] Set up chunks
+**** [ ] Allow negative coordinates
 *** [ ] Add different regions
 *** [ ] Add impassable or dangerous water
 ** TODO Add more ways to get around?

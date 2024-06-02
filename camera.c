@@ -4,6 +4,11 @@
 #include <stdlib.h>
 
 typedef struct {
+    // x = starting tile in x axis
+    // y = starting tile in y axis
+    // width = width in tiles
+    // height = height in tiles
+
     Rectangle area;
     size_t screen_width;
     size_t screen_height;

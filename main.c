@@ -90,6 +90,8 @@ int main(void)
     }
 
     SetTargetFPS(60);
+    Tiles *tiles = &state.tiles;
+    Player *player = &state.player;
 
     while (!WindowShouldClose()) {
         GameCamera *camera = &state.camera;
@@ -98,14 +100,15 @@ int main(void)
         state.camera.screen_width = GetScreenWidth();
         state.camera.screen_height = GetScreenHeight();
 
-        Coordinate target_pos = state.player.pos;
+        Coordinate target_pos = player->pos;
         if (IsKeyDown(KEY_W)) target_pos.y -= 1;
         if (IsKeyDown(KEY_S)) target_pos.y += 1;
         if (IsKeyDown(KEY_A)) target_pos.x -= 1;
         if (IsKeyDown(KEY_D)) target_pos.x += 1;
         if (IsKeyPressed(KEY_R)) {
-            free_tiles(&state.tiles);
-            state.tiles = tiles_generate(NUM_GRASS_PATCHES, state.tiles.wide, state.tiles.wide);
+            free_tiles(tiles);
+            state.tiles = tiles_generate(NUM_GRASS_PATCHES, tiles->wide, tiles->wide);
+            tiles = &state.tiles;
         }
         if (IsKeyPressed(KEY_Z)) {
             camera->area.width  -= camera->area.width / 10;
@@ -118,53 +121,54 @@ int main(void)
         // END handle input
 
         // Update state
-        Tile target_tile = tiles_get_tile(state.tiles, state.player.cluster_id, target_pos);
+        Tile target_tile = tiles_get_tile(*tiles, player->cluster_id, target_pos);
         if (target_tile.type != TREE_TRUNK) {
-            state.player.pos = target_pos;
+            player->pos = target_pos;
         }
 
-        if (state.player.pos.x < 0) {
-            state.player.pos.x += state.tiles.wide;
-            state.player.cluster_id.x--;
-            LOG("New player cluster id x:%d y:%d\n", state.player.cluster_id.x, state.player.cluster_id.y);
+        if (player->pos.x < 0) {
+            player->pos.x += tiles->wide;
+            player->cluster_id.x--;
+            LOG("New player cluster id x:%d y:%d\n", player->cluster_id.x, player->cluster_id.y);
         }
-        if (state.tiles.wide <= state.player.pos.x) {
-            state.player.pos.x -= state.tiles.wide;
-            state.player.cluster_id.x++;
-            LOG("New player cluster id x:%d y:%d\n", state.player.cluster_id.x, state.player.cluster_id.y);
+        if (tiles->wide <= player->pos.x) {
+            player->pos.x -= tiles->wide;
+            player->cluster_id.x++;
+            LOG("New player cluster id x:%d y:%d\n", player->cluster_id.x, player->cluster_id.y);
         }
-        if (state.player.pos.y < 0) {
-            state.player.pos.y += state.tiles.high;
-            state.player.cluster_id.y--;
-            LOG("New player cluster id x:%d y:%d\n", state.player.cluster_id.x, state.player.cluster_id.y);
+        if (player->pos.y < 0) {
+            player->pos.y += tiles->high;
+            player->cluster_id.y--;
+            LOG("New player cluster id x:%d y:%d\n", player->cluster_id.x, player->cluster_id.y);
         }
-        if (state.tiles.high <= state.player.pos.y) {
-            state.player.pos.y -= state.tiles.high;
-            state.player.cluster_id.y++;
-            LOG("New player cluster id x:%d y:%d\n", state.player.cluster_id.x, state.player.cluster_id.y);
+        if (tiles->high <= player->pos.y) {
+            player->pos.y -= tiles->high;
+            player->cluster_id.y++;
+            LOG("New player cluster id x:%d y:%d\n", player->cluster_id.x, player->cluster_id.y);
         }
 
         uint32_t padding_x = camera_padding_wide(state.camera);
         uint32_t padding_y = camera_padding_high(state.camera);
-        Coordinate p_cluster_id = state.player.cluster_id;
-        int player_i = coord_to_index(state.player.pos.x, state.player.pos.y, state.tiles.wide);
-        Cluster *p_cluster = tiles_lookup_cluster(state.tiles, p_cluster_id);
-        Coordinate player_camera_pos = tiles_cluster_to_abs(state.tiles, state.player.cluster_id, state.player.pos);
+        Coordinate p_cluster_id = player->cluster_id;
+        int player_i = coord_to_index(player->pos.x, player->pos.y, tiles->wide);
+        Cluster *p_cluster = tiles_lookup_cluster(*tiles, p_cluster_id);
+        Coordinate player_abs_pos = tiles_cluster_to_abs(*tiles, player->cluster_id, player->pos);
+
         if (!p_cluster->tiles[player_i].walked_on) {
-            LOG("Walking on tile i:%d x:%d y:%d\n", player_i, player_camera_pos.x, player_camera_pos.y);
+            LOG("Walking on tile i:%d x:%d y:%d\n", player_i, player_abs_pos.x, player_abs_pos.y);
             p_cluster->tiles[player_i].walked_on = true;
         }
 
-        if (player_camera_pos.x < camera->area.x + padding_x) {
+        if (player_abs_pos.x < camera->area.x + padding_x) {
             camera->area.x -= padding_x * 2;
         }
-        if (camera->area.x + camera->area.width < player_camera_pos.x + padding_x) {
+        if (camera->area.x + camera->area.width < player_abs_pos.x + padding_x) {
             camera->area.x += padding_x * 2;
         }
-        if (player_camera_pos.y < camera->area.y + padding_y) {
+        if (player_abs_pos.y < camera->area.y + padding_y) {
             camera->area.y -= padding_y * 2;
         }
-        if (camera->area.y + camera->area.height < player_camera_pos.y + padding_y) {
+        if (camera->area.y + camera->area.height < player_abs_pos.y + padding_y) {
             camera->area.y += padding_y * 2;
         }
         // End update state
@@ -184,10 +188,10 @@ int main(void)
             int x_i = 0;
             for (int x = camera->area.x; x < ending_tile_x; x++) {
                 // TODO(grant): Figure out how to properly draw across clusters
-                ClusterCoordinate info = tiles_abs_to_cluster(state.tiles, (Coordinate) {.x=x, .y=y});
-                Tile tile = tiles_get_tile(state.tiles, info.cluster_id, info.coord);
+                ClusterCoordinate info = tiles_abs_to_cluster(*tiles, (Coordinate) {.x=x, .y=y});
+                Tile tile = tiles_get_tile(*tiles, info.cluster_id, info.coord);
 
-                Color c;
+                color c;
                 switch(tile.type) {
                 case DIRT: {
                     c = BROWN;
@@ -217,14 +221,14 @@ int main(void)
             y_i++;
         }
 
-        Coordinate abs_player = tiles_cluster_to_abs(state.tiles, p_cluster_id, state.player.pos);
+        Coordinate abs_player = tiles_cluster_to_abs(*tiles, p_cluster_id, player->pos);
         int player_pixel_x = (abs_player.x - state.camera.area.x) * tile_width;
         int player_pixel_y = (abs_player.y - state.camera.area.y) * tile_height;
 
-        DrawRectangle(player_pixel_x, player_pixel_y, tile_width, tile_height, state.player.color);
+        DrawRectangle(player_pixel_x, player_pixel_y, tile_width, tile_height, player->color);
 
         char player_text[1000] = {0};
-        snprintf(player_text, 1000, "Player pos x:%d y:%d - cluster x:%d y:%d - px x:%d y:%d", state.player.pos.x, state.player.pos.y, state.player.cluster_id.x, state.player.cluster_id.y, player_pixel_x, player_pixel_y);
+        snprintf(player_text, 1000, "Player pos x:%d y:%d - cluster x:%d y:%d - px x:%d y:%d", player->pos.x, player->pos.y, player->cluster_id.x, player->cluster_id.y, player_pixel_x, player_pixel_y);
         DrawText(player_text, 10, 30, 20, WHITE);
 
         char camera_text[1000] = {0};

@@ -4,8 +4,8 @@
 *** [X] Allow drawing half finished tiles off the right and bottom edges of the screen
 *** [X] Improve camera
 ** TODO Increase world generation
-*** [ ] Set up chunks
-**** [ ] Allow negative coordinates
+*** [X] Set up chunks
+**** [X] Allow negative coordinates
 *** [ ] Add different regions
 *** [ ] Add impassable or dangerous water
 ** TODO Add more ways to get around?
@@ -19,4 +19,5 @@
 ** DONE Drawn tiles all move up one when going one cluster to the left. Go down one when going to the right
 ** DONE Seg fault when going up one cluster then coming back down
 ** DONE Seg fault when going down a cluster
-** TODO Camera gets fucky when going to other cluster
+** DONE Camera gets fucky when going to other cluster
+** TODO Going to cluster x:-2 y:-1 seg faults

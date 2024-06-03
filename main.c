@@ -155,20 +155,41 @@ int main(void)
         Coordinate player_abs_pos = tiles_cluster_to_abs(*tiles, player->cluster_id, player->pos);
 
         if (!p_cluster->tiles[player_i].walked_on) {
-            LOG("Walking on tile i:%d x:%d y:%d\n", player_i, player_abs_pos.x, player_abs_pos.y);
+            //LOG("Walking on tile i:%d x:%d y:%d\n", player_i, player_abs_pos.x, player_abs_pos.y);
             p_cluster->tiles[player_i].walked_on = true;
         }
 
-        if (player_abs_pos.x < camera->area.x + padding_x) {
+        int camera_x_with_padding = camera->area.x + padding_x;
+        if (player_abs_pos.x < camera_x_with_padding) {
+            /* LOG("Moving left! camera x:%d padding %d | player x:%d y:%d (abs x:%d y:%d)\n", (int)camera->area.x, padding_x, player->pos.x, player->pos.y, player_abs_pos.x, player_abs_pos.y); */
+            /* LOG("if (player_abs_pos.x[%d] < camera->area.x[%f] + padding_x[%d])\n", */
+            /*     player_abs_pos.x, camera->area.x, padding_x); */
+
             camera->area.x -= padding_x * 2;
         }
-        if (camera->area.x + camera->area.width < player_abs_pos.x + padding_x) {
+
+        // NOTE(grant): If I don't break this out, I get weird bugs. Idk why.
+        //  Gonna do it for all the rest of them, just in case.
+        int right_edge = (int)camera->area.x + (int)camera->area.width;
+        int player_plus_padding = player_abs_pos.x + padding_x;
+        if (right_edge < player_plus_padding) {
+            /* LOG("Moving right! camera x:%d padding %d | player x:%d y:%d (abs x:%d y:%d)\n", (int)camera->area.x, padding_x, player->pos.x, player->pos.y, player_abs_pos.x, player_abs_pos.y); */
+            /* LOG("if ((right_edge[%d]) camera->area.x[%f] + camera->area.width[%f] < (player_plus_padding[%d]) player_abs_pos.x[%d] + padding_x[%d])\n", */
+            /*     right_edge, camera->area.x, camera->area.width, player_plus_padding, player_abs_pos.x, padding_x); */
+
             camera->area.x += padding_x * 2;
         }
-        if (player_abs_pos.y < camera->area.y + padding_y) {
+
+        int camera_y_with_padding = camera->area.y + padding_y;
+        if (player_abs_pos.y < camera_y_with_padding) {
+            LOG("Moving up!\n");
             camera->area.y -= padding_y * 2;
         }
-        if (camera->area.y + camera->area.height < player_abs_pos.y + padding_y) {
+
+        int top_edge = camera->area.y + camera->area.height;
+        int player_y_with_padding = player_abs_pos.y + padding_y;
+        if (top_edge < player_y_with_padding) {
+            LOG("Moving down!\n");
             camera->area.y += padding_y * 2;
         }
         // End update state
@@ -191,7 +212,7 @@ int main(void)
                 ClusterCoordinate info = tiles_abs_to_cluster(*tiles, (Coordinate) {.x=x, .y=y});
                 Tile tile = tiles_get_tile(*tiles, info.cluster_id, info.coord);
 
-                color c;
+                Color c;
                 switch(tile.type) {
                 case DIRT: {
                     c = BROWN;

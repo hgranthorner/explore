@@ -2,6 +2,9 @@ CC=clang
 
 CFLAGS=-Wall -Werror -Wpedantic -std=c17
 
+.PHONY: all
+all: raylib stb_ds.h bin/explore
+
 bin/explore: camera.c coordinate.c main.c stb.c tiles.c
 	$(CC) $(CFLAGS) -o $@ -Ofast -lraylib -Lraylib-5.0/build/raylib -g -Iraylib-5.0/build/raylib/include -framework Cocoa -framework IOKit main.c
 

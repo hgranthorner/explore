@@ -46,6 +46,8 @@ typedef struct {
     // NOTE(grant): the camera operates in absolute tile coordinates. It doesn't care about clusters.
     GameCamera camera;
     Tiles tiles;
+    bool debug_mode;
+    bool speedup;
 } State;
 
 int main(void)
@@ -100,11 +102,23 @@ int main(void)
         state.camera.screen_width = GetScreenWidth();
         state.camera.screen_height = GetScreenHeight();
 
+        bool toggled_debug_mode = false;
+        if (IsKeyPressed(KEY_D) && (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))) {
+            state.debug_mode = !state.debug_mode;
+            toggled_debug_mode = true;
+        }
+        bool toggled_speedup = false;
+        if (IsKeyPressed(KEY_S) && (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))) {
+            state.speedup = !state.speedup;
+            toggled_speedup = true;
+        }
+
         Coordinate target_pos = player->pos;
-        if (IsKeyDown(KEY_W)) target_pos.y -= 1;
-        if (IsKeyDown(KEY_S)) target_pos.y += 1;
-        if (IsKeyDown(KEY_A)) target_pos.x -= 1;
-        if (IsKeyDown(KEY_D)) target_pos.x += 1;
+        if (IsKeyDown(KEY_W))                        target_pos.y -= state.speedup ? 5 : 1;
+        if (IsKeyDown(KEY_A))                        target_pos.x -= state.speedup ? 5 : 1;
+        if (IsKeyDown(KEY_S) && !toggled_speedup)    target_pos.y += state.speedup ? 5 : 1;
+        if (IsKeyDown(KEY_D) && !toggled_debug_mode) target_pos.x += state.speedup ? 5 : 1;
+
         if (IsKeyPressed(KEY_R)) {
             free_tiles(tiles);
             state.tiles = tiles_generate(NUM_GRASS_PATCHES, tiles->wide, tiles->wide);
@@ -248,15 +262,17 @@ int main(void)
 
         DrawRectangle(player_pixel_x, player_pixel_y, tile_width, tile_height, player->color);
 
-        char player_text[1000] = {0};
-        snprintf(player_text, 1000, "Player pos x:%d y:%d - cluster x:%d y:%d - px x:%d y:%d", player->pos.x, player->pos.y, player->cluster_id.x, player->cluster_id.y, player_pixel_x, player_pixel_y);
-        DrawText(player_text, 10, 30, 20, WHITE);
+        if (state.debug_mode) {
+            char player_text[1000] = {0};
+            snprintf(player_text, 1000, "Player pos x:%d y:%d - cluster x:%d y:%d - px x:%d y:%d", player->pos.x, player->pos.y, player->cluster_id.x, player->cluster_id.y, player_pixel_x, player_pixel_y);
+            DrawText(player_text, 10, 30, 20, WHITE);
 
-        char camera_text[1000] = {0};
-        snprintf(camera_text, 1000, "Camera x:%d->%d y:%d->%d", (int)state.camera.area.x, (int)(state.camera.area.x + state.camera.area.width), (int)state.camera.area.y, (int)(state.camera.area.y + state.camera.area.height));
-        DrawText(camera_text, 10, 50, 20, WHITE);
+            char camera_text[1000] = {0};
+            snprintf(camera_text, 1000, "Camera x:%d->%d y:%d->%d", (int)state.camera.area.x, (int)(state.camera.area.x + state.camera.area.width), (int)state.camera.area.y, (int)(state.camera.area.y + state.camera.area.height));
+            DrawText(camera_text, 10, 50, 20, WHITE);
 
-        DrawFPS(10, 10);
+            DrawFPS(10, 10);
+        }
 
         EndDrawing();
         // End draw

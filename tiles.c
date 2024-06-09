@@ -103,7 +103,10 @@ Cluster generate_cluster(Coordinate cluster_id, int wide, int high, uint64_t num
     }
 
     LOG("Generated %" PRIu64 " tiles!\n", num_tiles);
-    arrfree(trees);
+
+    if (trees != NULL) {
+        arrfree(trees);
+    }
 
     return cluster;
 }
@@ -193,12 +196,20 @@ Tile tiles_get_tile(Tiles tiles, Coordinate current_cluster_id, Coordinate targe
     }
 
     Cluster *cluster = tiles_lookup_cluster(tiles, c_id);
+    bool created_cluster = false;
     if (cluster == NULL) {
+        LOG("Creating new cluster for c_id x:%d y:%d with coords x:%d y:%d\n", c_id.x, c_id.y, x, y);
         arrput(tiles.clusters, generate_cluster(c_id, tiles.wide, tiles.high, tiles.num_grass_patches));
         cluster = tiles_lookup_cluster(tiles, c_id);
+        LOG("Created new cluster x:%d y:%d\n", c_id.x, c_id.y);
+        created_cluster = true;
     }
 
     int i = coord_to_index(x, y, tiles.wide);
+    if (created_cluster) {
+        LOG("Successfully retrieved tile index %d from new cluster x:%d y:%d\n", i, c_id.x, c_id.y);
+        LOG("The tile is type %d and walked_on %d\n", cluster->tiles[i].type, cluster->tiles[i].walked_on);
+    }
     return cluster->tiles[i];
 }
 

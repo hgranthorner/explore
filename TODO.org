@@ -20,4 +20,4 @@
 ** DONE Seg fault when going up one cluster then coming back down
 ** DONE Seg fault when going down a cluster
 ** DONE Camera gets fucky when going to other cluster
-** TODO Going to cluster x:-2 y:-1 seg faults
+** TODO Going to cluster x:-2 y:-1 seg faults, or x:-1 y:-2

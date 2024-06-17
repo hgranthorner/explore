@@ -20,14 +20,16 @@ typedef struct {
     bool     walked_on;
 } Tile;
 
+typedef Coordinate ClusterId;
+
 typedef struct {
-    Coordinate cluster_id;
+    ClusterId cluster_id;
     Tile *tiles;
 } Cluster;
 
 typedef struct {
     Coordinate coord;
-    Coordinate cluster_id;
+    ClusterId cluster_id;
 } ClusterCoordinate;
 
 typedef struct {
@@ -54,7 +56,7 @@ void cluster_set_tiles(Cluster *cluster, Coordinate coord, int wide, int high, i
     }
 }
 
-Cluster generate_cluster(Coordinate cluster_id, int wide, int high, uint64_t num_grass_patches)
+Cluster cluster_generate(ClusterId cluster_id, int wide, int high, uint64_t num_grass_patches)
 {
     uint64_t num_tiles = wide * high;
     uint64_t max_grass_size = MAX_GRASS_SIZE;
@@ -118,7 +120,7 @@ Tiles tiles_generate(int num_grass_patches, uint64_t tiles_wide, uint64_t tiles_
     tiles.high = tiles_high;
     tiles.num_grass_patches = num_grass_patches;
     tiles.clusters = NULL;
-    Cluster initial_cluster = generate_cluster((Coordinate) {.x = 0, .y = 0}, tiles_wide, tiles_high, num_grass_patches);
+    Cluster initial_cluster = cluster_generate((Coordinate) {.x = 0, .y = 0}, tiles_wide, tiles_high, num_grass_patches);
     arrput(tiles.clusters, initial_cluster);
     return tiles;
 }
@@ -131,16 +133,14 @@ void free_tiles(Tiles *tiles)
     arrfree(tiles->clusters);
 }
 
-bool cluster_equals(Coordinate c_id1, Coordinate c_id2)
-{
-    return c_id1.x == c_id2.x && c_id1.y == c_id2.y;
-}
-
-Cluster *tiles_lookup_cluster(Tiles tiles, Coordinate cluster_id)
+Cluster *tiles_lookup_cluster(Tiles tiles, ClusterId cluster_id)
 {
     for (int i = 0; i < arrlenu(tiles.clusters); i++) {
         Cluster *cluster = &tiles.clusters[i];
-        if (cluster_equals(cluster->cluster_id, cluster_id)) {
+        if (cluster == NULL) {
+            (void) i;
+        }
+        if (cluster->cluster_id.x == cluster_id.x && cluster->cluster_id.y == cluster_id.y) {
             return cluster;
         }
     }
@@ -148,7 +148,7 @@ Cluster *tiles_lookup_cluster(Tiles tiles, Coordinate cluster_id)
     return NULL;
 }
 
-Tile tiles_get_tile(Tiles tiles, Coordinate current_cluster_id, Coordinate target)
+Tile tiles_get_tile(Tiles tiles, ClusterId current_cluster_id, Coordinate target)
 {
     int x = target.x;
     int y = target.y;
@@ -195,11 +195,11 @@ Tile tiles_get_tile(Tiles tiles, Coordinate current_cluster_id, Coordinate targe
         // Normal
     }
 
-    Cluster *cluster = tiles_lookup_cluster(tiles, c_id);
+    const Cluster *cluster = tiles_lookup_cluster(tiles, c_id);
     bool created_cluster = false;
     if (cluster == NULL) {
         LOG("Creating new cluster for c_id x:%d y:%d with coords x:%d y:%d\n", c_id.x, c_id.y, x, y);
-        arrput(tiles.clusters, generate_cluster(c_id, tiles.wide, tiles.high, tiles.num_grass_patches));
+        arrput(tiles.clusters, cluster_generate(c_id, tiles.wide, tiles.high, tiles.num_grass_patches));
         cluster = tiles_lookup_cluster(tiles, c_id);
         LOG("Created new cluster x:%d y:%d\n", c_id.x, c_id.y);
         created_cluster = true;
@@ -210,10 +210,15 @@ Tile tiles_get_tile(Tiles tiles, Coordinate current_cluster_id, Coordinate targe
         LOG("Successfully retrieved tile index %d from new cluster x:%d y:%d\n", i, c_id.x, c_id.y);
         LOG("The tile is type %d and walked_on %d\n", cluster->tiles[i].type, cluster->tiles[i].walked_on);
     }
+    if (i < 0 || arrlenu(cluster->tiles) <= i) {
+        LOG("Invalid access to cluster x:%d y:%d for index %d", cluster->cluster_id.x, cluster->cluster_id.y, i);
+        (void) i;
+    }
+
     return cluster->tiles[i];
 }
 
-Coordinate tiles_cluster_to_abs(Tiles tiles, Coordinate cluster_id, Coordinate position)
+Coordinate tiles_cluster_to_abs(Tiles tiles, ClusterId cluster_id, Coordinate position)
 {
     while (cluster_id.x < 0) {
         position.x -= tiles.wide;
@@ -237,7 +242,7 @@ Coordinate tiles_cluster_to_abs(Tiles tiles, Coordinate cluster_id, Coordinate p
 
 ClusterCoordinate tiles_abs_to_cluster(Tiles tiles, Coordinate position)
 {
-    Coordinate cluster_id = {0};
+    ClusterId cluster_id = {0};
     while (position.x < 0) {
         position.x += tiles.wide;
         cluster_id.x--;

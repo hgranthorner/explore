@@ -6,7 +6,7 @@ CFLAGS=-Wall -Werror -Wpedantic -std=c17
 all: raylib stb_ds.h bin/explore
 
 bin/explore: camera.c coordinate.c main.c stb.c tiles.c
-	$(CC) $(CFLAGS) -o $@ -Ofast -lraylib -Lraylib-5.0/build/raylib -g -Iraylib-5.0/build/raylib/include -framework Cocoa -framework IOKit main.c
+	$(CC) $(CFLAGS) -o $@ -lraylib -Lraylib-5.0/build/raylib -g -Iraylib-5.0/build/raylib/include -framework Cocoa -framework IOKit main.c
 
 .PHONY: run
 run: bin/explore
@@ -19,3 +19,7 @@ raylib:
 .PHONY: stb_ds.h
 stb_ds.h:
 	curl https://raw.githubusercontent.com/nothings/stb/master/stb_ds.h -o stb_ds.h
+
+.PHONY: clean
+clean:
+	rm bin/*

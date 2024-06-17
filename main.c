@@ -196,14 +196,14 @@ int main(void)
 
         int camera_y_with_padding = camera->area.y + padding_y;
         if (player_abs_pos.y < camera_y_with_padding) {
-            LOG("Moving up!\n");
+            // LOG("Moving up!\n");
             camera->area.y -= padding_y * 2;
         }
 
         int top_edge = camera->area.y + camera->area.height;
         int player_y_with_padding = player_abs_pos.y + padding_y;
         if (top_edge < player_y_with_padding) {
-            LOG("Moving down!\n");
+            // LOG("Moving down!\n");
             camera->area.y += padding_y * 2;
         }
         // End update state
